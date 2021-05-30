@@ -1,10 +1,9 @@
 """Main module"""
 import re
 import logging
-import inspect
 import telegram.ext as te
 
-import handlers
+from handlers import HANDLERS
 
 def load_token(token_file: 'str' = 'token.txt') -> str:
     """Loads token from specified file"""
@@ -14,11 +13,8 @@ def load_token(token_file: 'str' = 'token.txt') -> str:
 
 def register_handlers(dispatcher: te.Dispatcher) -> None:
     """Registers handlers from handlers.py"""
-    handler_callbacks = inspect.getmembers(
-            handlers, lambda obj: hasattr(obj, 'handler_inst')
-    )
-    for _, handler_callback in handler_callbacks:
-        dispatcher.add_handler(handler_callback.handler_inst)
+    for handler in HANDLERS:
+        dispatcher.add_handler(handler)
 
 
 def main():

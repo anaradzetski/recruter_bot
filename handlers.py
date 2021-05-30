@@ -1,14 +1,14 @@
 '''Handlers'''
+import json
 import inspect
 from functools import wraps
 
-import telegram.ext as te
+import telegram as tel
+import telegram.ext as telex
 
-_HANDLERS = dict(
-    inspect.getmembers(te, lambda obj: inspect.isclass(obj) and issubclass(obj, te.Handler))
-)
+HANDLERS = []
 
-def handler(handler_cls: te.Handler, *args, **kwargs):
+def handler(handler_cls: telex.Handler, *args, **kwargs):
     """Indicates that this function will be used as handler.
 
     Args:
@@ -30,17 +30,42 @@ def handler(handler_cls: te.Handler, *args, **kwargs):
         @wraps(func)
         def ret_func(update, context):
             return func(update, context)
-        ret_func.handler_inst = handler_cls(*args, **kwargs, callback=ret_func)
+        HANDLERS.append(handler_cls(*args, **kwargs, callback=ret_func))
 
         return ret_func
 
     return ret_dec
 
 
-@handler(te.CommandHandler, 'check')
+@handler(telex.CommandHandler, 'check')
 def check(update, context):
     """Checks wether bot is on"""
     context.bot.send_message(
-        chat_id=update.effective_chat.id,
+        chat_id=update.effective_message.chat_id,
         text='Bot is running'
+    )
+
+
+@handler(telex.CommandHandler, 'start')
+def start(update, context):
+    """Enables buttons with shortcuts."""
+    if not hasattr(start, 'markup'):
+        with open('shortcuts.json') as f:
+            shortcuts_json = json.load(f)
+        keyboard = [[key] for key in shortcuts_json.keys()]
+        start.markup = tel.ReplyKeyboardMarkup(keyboard)
+    context.bot.send_message(
+        chat_id=update.effective_message.chat_id,
+        text='Enabling buttons...',
+        reply_markup=start.markup
+    )
+
+
+@handler(telex.CommandHandler, 'stop')
+def stop(update, context):
+    """Disables buttons with shortcuts."""
+    context.bot.send_message(
+        chat_id=update.effective_message.chat_id,
+        text='Disabling buttons...',
+        reply_markup=tel.ReplyKeyboardRemove()
     )
