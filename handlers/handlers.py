@@ -7,6 +7,7 @@ import telegram as tel
 import telegram.ext as telex
 
 HANDLERS = []
+_SHORTCUTS_FILE = 'conf/shortcuts.json'
 
 def handler(handler_cls: telex.Handler, *args, **kwargs):
     """Indicates that this function will be used as handler.
@@ -50,7 +51,7 @@ def check(update, context):
 def start(update, context):
     """Enables buttons with shortcuts."""
     if not hasattr(start, 'markup'):
-        with open('shortcuts.json') as f:
+        with open(_SHORTCUTS_FILE) as f:
             shortcuts_json = json.load(f)
         keyboard = [[key] for key in shortcuts_json.keys()]
         start.markup = tel.ReplyKeyboardMarkup(keyboard)

@@ -5,7 +5,7 @@ import telegram.ext as te
 
 from handlers import HANDLERS
 
-def load_token(token_file: 'str' = 'token.txt') -> str:
+def load_token(token_file: 'str' = 'conf/token.txt') -> str:
     """Loads token from specified file"""
     with open(token_file) as f:
         return re.match(r'\S+', f.read()).group(0)
