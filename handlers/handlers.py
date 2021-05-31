@@ -2,12 +2,14 @@
 import json
 import inspect
 from functools import wraps
+from typing import Iterable, Union
 
 import telegram as tel
 import telegram.ext as telex
 
 HANDLERS = []
 _SHORTCUTS_FILE = 'conf/shortcuts.json'
+_KEYBOARD_CONF_FILE = 'conf/keyboard_conf.json'
 
 def handler(handler_cls: telex.Handler, *args, **kwargs):
     """Indicates that this function will be used as handler.
@@ -47,19 +49,55 @@ def check(update, context):
     )
 
 
+def build_keyboard(
+    buttons: Iterable[str],
+    inline: bool = False
+) -> Union[tel.ReplyKeyboardMarkup, tel.InlineKeyboardMarkup]:
+    """Buids keyboard from button list
+
+    Args:
+        buttons: iterable with button names.
+        inline: inline mode flag.
+    Returns:
+        keyboard markup.
+    """
+    if not hasattr(build_keyboard, 'buttons_in_row'):
+        with open(_KEYBOARD_CONF_FILE) as f:
+            keyboard_json = json.load(f)
+        build_keyboard.buttons_in_row = keyboard_json['buttons_in_row']
+    chunk = build_keyboard.buttons_in_row
+    buttons_lst = list(buttons)
+    button_cls = tel.InlineKeyboardButton if inline else tel.KeyboardButton
+    keyboard = [
+        [button_cls(name) for name in buttons_lst[i: i + chunk]]
+        for i in range(0, len(buttons_lst), chunk)
+    ]
+    keyboard_cls = tel.InlineKeyboardMarkup if inline else tel.ReplyKeyboardMarkup
+    return keyboard_cls(keyboard)
+
+
 @handler(telex.CommandHandler, 'start')
 def start(update, context):
     """Enables buttons with shortcuts."""
     if not hasattr(start, 'markup'):
         with open(_SHORTCUTS_FILE) as f:
             shortcuts_json = json.load(f)
-        keyboard = [[key] for key in shortcuts_json.keys()]
-        start.markup = tel.ReplyKeyboardMarkup(keyboard)
+        start.markup = build_keyboard(shortcuts_json.keys())
     context.bot.send_message(
         chat_id=update.effective_message.chat_id,
         text='Enabling buttons...',
         reply_markup=start.markup
     )
+
+def _init_buttons_respond():
+    def make_reply_lambda(text):
+        """Tmp function to avoid lambdas in loops."""
+        return lambda update, context: update.message.reply_text(text)
+
+    with open(_SHORTCUTS_FILE) as f:
+        shortcuts = json.load(f)
+        for key, val in shortcuts.items():
+            handler(telex.MessageHandler, telex.Filters.regex(key))(make_reply_lambda(val))
 
 
 @handler(telex.CommandHandler, 'stop')
